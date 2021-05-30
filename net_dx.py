@@ -37,54 +37,65 @@ def net_dx(path_to_csv, path_to_nodes):
 
 
     mats = []
-    ad_mat= []
     dfs = []
     graphs = {'Subject': [],
              'graph_obj': [],
               'Strength':[],
-              'Degree_Assortativity': []
+              'Degree_dist': [],
+              'Degree_mean': [],
+              'Degree_category': [],
+              'Degree_Assortativity': [],
+              'Disconnections':[],
+              'SWP_binary': []
              };
     for mat in FilenamesList:
         mats.append(scipy.io.loadmat(mat))
         plt.clf();
+        # make a folder per each subject
+        sub = mat.split('.')
+        sub_folder = path + sub[0]
+        if not os.path.exists(sub_folder):
+            os.makedirs(sub_folder)
+
+        # make reports folder within each subject folder
+        dir = 'reports'
+        reports_path = os.path.join(sub_folder, dir)
+        if not os.path.exists(reports_path):
+            os.makedirs(reports_path)
+
         for adjacencies in mats:
             plt.clf();
             ad_mat=adjacencies['CorrMat']
-            dfs.append(pd.DataFrame(ad_mat,columns = final_node, index=final_comms))
-                #df.to_csv(mat + '.csv', index=True, header=True)
-        g = ig.Graph.Adjacency((ad_mat > 0).tolist())
-        g.es['weight'] = ad_mat[ad_mat.nonzero()]
+            my_mat = pd.DataFrame(ad_mat,columns = final_node, index=final_comms)
+            # write adjacency csv to subject folder
+            my_mat.to_csv(sub_folder +'/' + sub[0] + '.csv', index=True, header=True)
+
+        g = ig.Graph.Weighted_Adjacency((ad_mat > 0).tolist(), attr='weight', mode='max')
+        weights = ad_mat[ad_mat.nonzero()]
+        g.es['weight'] = ad_mat
         g.vs['label'] = final_node
-        g.vs.select(_degree = g.maxdegree())
-        graphs['Subject'].append(mat)
+        g.vs.select(_degree = g.degree)
+        g.vs.select(_degree=0).delete()
+        g = g.as_undirected()
+    #     ig.Graph.write_adjacency(g, sub_folder +'/' + sub[0] + '_for_swp.csv', sep = ',', attribute='weight', eol='\n')
+        graphs['Subject'].append(mat.split('.'))
         graphs['graph_obj'].append(g)
-        sns.displot(g.degree(), bins=20)
+        graphs['Degree_dist'].append(g.degree(mode='all'))
+
+        # tells you whether the graph is connected or not or if there are disconnected components.
+        graphs['Disconnections'].append(g.is_connected(mode='strong'))
+
+        sns.histplot(g.degree(), bins=20)
         plt.title(mat)
-        plt.savefig(mat + 'degreedistribution.jpg')
+        plt.savefig(reports_path + '/' + sub[0] + '_degreedistribution.jpg')
+
+
+        my_mat.to_dict()
+        sns.heatmap(my_mat, center = 0, square = True)
+        plt.figure.figsize=(10,10)
+        plt.title(mat)
+        plt.tight_layout()
+        plt.savefig(reports_path + '/' + sub[0] + '_heatmap.png', transparent = False)
         plt.clf();
-        for df in dfs:
-            df.to_dict()
-            sns.heatmap(df, center = 0)
-            plt.title(mat)
-            plt.savefig(mat + 'heatmap.png')
-            plt.clf();
-
-##############################Compute metrics and diagnostic measures
-
-        strengths = []
-        degree_assortativity = []
-        for subject in graphs['Subject']:
-            for graph in graphs['graph_obj']:
-                strengths.append(statistics.mean(graph.strength(loops=False, weights = graph.es['weight'], mode='all')))
-                graphs['Strength'].append(statistics.mean(graph.strength(loops=False, weights = graph.es['weight'], mode='all')))
-                sns.displot(graph.strength(loops=False, weights = graph.es['weight'], mode='all'), bins = 20)
-                plt.title(subject)
-                plt.savefig(subject + 'strength_distribution.jpg')
-                plt.clf();
-                Get Degree Assortativity and append to list and graphs dict.
-                degree_assortativity.append(graph.assortativity_degree(directed=False))
-                graphs['Degree_Assortativity'].append(graph.assortativity_degree(directed=False))
-
-
 
 ############################## Distribution comparisons.
