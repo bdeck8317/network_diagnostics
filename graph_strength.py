@@ -9,5 +9,5 @@ def graph_strength(data):
         plt.savefig(subject[0] + '/' + '/reports/'  + subject[0] + '_strength_distribution.png', transparent = False);
         plt.clf();
 #         Get Degree Assortativity and append to list and graphs dict.
-    degree_assortativity.append(graph.assortativity_degree(directed=False))
-    graphs['Degree_Assortativity'].append((graph.assortativity_degree(directed=False)))
+        degree_assortativity.append(graph.assortativity_degree(directed=False))
+        graphs['Degree_Assortativity'].append((graph.assortativity_degree(directed=False)))
